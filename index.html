@@ -60,6 +60,29 @@ footer{text-align:center;color:var(--soft);font-size:12.5px;margin-top:8px}
 #lbc{color:#e8edf5;margin-top:16px;max-width:42ch;text-align:center;font-size:15px}
 .ctl{display:flex;gap:10px;margin-top:18px}
 .ctl button{background:none;border:1px solid #e8edf588;color:#e8edf5;padding:9px 20px;border-radius:999px;font:inherit;font-size:14px;cursor:pointer}
+@media (min-width:900px){
+body{padding-bottom:40px;padding-top:76px}
+.wrap{max-width:1080px;padding:32px 24px}
+.nav{top:0;bottom:auto;border-top:0;border-bottom:1px solid var(--line);justify-content:center;gap:14px;padding:10px 8px;padding-top:calc(10px + env(safe-area-inset-top,0px))}
+.nav button:hover{background:var(--chip);color:var(--amberink)}
+.avatar{width:128px;height:128px}
+h1{font-size:38px}
+.tag{font-size:16px}
+.hero{gap:28px;padding:30px 36px}
+h2{font-size:26px}
+.strip{display:grid;grid-template-columns:repeat(4,1fr);overflow:visible;margin:0;padding:0}
+.feat{width:auto;height:340px}
+#cats,#shoot{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+#cats .cat,#shoot .cat{margin-top:0;flex-direction:column;align-items:flex-start;padding:14px}
+#cats .cat img,#shoot .cat img{width:100%;height:190px;border-radius:16px}
+.grid{columns:3;column-gap:14px}
+.tile{margin-bottom:14px}
+#about.on{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start}
+#about .card{margin:0}
+#contact .card{max-width:640px;margin:0 auto}
+#lbi{max-height:78vh;max-width:80vw}
+}
+@media (min-width:1280px){.grid{columns:4}}
 </style>
 </head>
 <body>
