@@ -22,6 +22,12 @@ textarea{resize:vertical}
 #go:disabled{opacity:.6}
 #msg{margin-top:14px;font-size:14px;color:var(--soft);white-space:pre-wrap}
 #msg.ok{color:#15803d}#msg.err{color:#b91c1c}
+.row{display:flex;gap:12px;align-items:center;margin-top:12px}
+.row img{width:64px;height:64px;object-fit:cover;border-radius:12px;flex:none;background:var(--chip)}
+.row .info{flex:1;font-size:13.5px;color:var(--soft);line-height:1.4}
+.del{width:auto;padding:9px 16px;font-size:13.5px;color:#b91c1c;cursor:pointer}
+.del:disabled{opacity:.5}
+#load{margin-top:4px;cursor:pointer}
 [hidden]{display:none!important}
 </style>
 </head>
@@ -39,9 +45,12 @@ textarea{resize:vertical}
 
   <label for="cat">Category</label>
   <select id="cat">
-    <option value="rivers">Rivers &amp; Dusk</option>
-    <option value="fields">Fields &amp; Roads</option>
-    <option value="rain">Rain, Storm &amp; Silence</option>
+    <option value="golden">Golden Hours</option>
+    <option value="rose">Rose Dusk</option>
+    <option value="bluehour">Blue Hour</option>
+    <option value="bluesky">Open Sky</option>
+    <option value="green">Green Fields</option>
+    <option value="storm">Storm &amp; Night</option>
     <option value="__new">+ New category…</option>
   </select>
   <input id="newcat" placeholder="New category name, e.g. Portraits" style="margin-top:8px" hidden>
@@ -51,6 +60,13 @@ textarea{resize:vertical}
 
   <button id="go">Upload</button>
   <div id="msg" role="status"></div>
+</div>
+
+<div class="card" style="margin-top:16px">
+  <h1>Your uploaded photos</h1>
+  <div class="sub">Photos added with this page can be deleted here. The first 11 photos are built into index.html and can't be deleted from here.</div>
+  <button id="load">Load my photos</button>
+  <div id="list"></div>
 </div>
 
 <script>
@@ -64,7 +80,7 @@ $('cat').onchange=function(){$('newcat').hidden=this.value!=='__new'};
 function say(t,c){$('msg').textContent=t;$('msg').className=c||''}
 function api(path,opt){
   opt=opt||{};
-  var put=opt.method==='PUT';
+  var put=opt.method==='PUT'||opt.method==='DELETE';
   opt.headers={Authorization:'Bearer '+$('tok').value.trim(),Accept:'application/vnd.github+json'};
   return fetch('https://api.github.com/repos/'+OWNER+'/'+REPO+'/contents/'+path+(put?'':'?ref='+BR+'&t='+Date.now()),opt);
 }
@@ -86,6 +102,56 @@ function dec(b){return decodeURIComponent(escape(atob(b.replace(/\n/g,''))))}
 async function fail(r,what){
   var m=''; try{m=(await r.json()).message}catch(e){}
   throw new Error(what+' failed ('+r.status+'). '+(r.status===401||r.status===403?'Check your token and its permission (Contents: Read and write). ':'')+(m||''));
+}
+
+$('load').onclick=function(){loadList()};
+async function loadList(){
+  var L=$('list');
+  if(!$('tok').value.trim())return say('Paste your GitHub token first.','err');
+  L.textContent='Loading…';
+  try{
+    var g=await api('photos.js');
+    if(!g.ok)await fail(g,'Reading photos.js');
+    var j=await g.json(),lines=dec(j.content).split('\n'),n=0;
+    L.textContent='';
+    lines.forEach(function(ln){
+      var t=ln.trim();
+      if(t.charAt(0)!=='[')return;
+      var a;try{a=JSON.parse(t.replace(/,$/,''))}catch(e){return}
+      if(!Array.isArray(a)||a.length<2)return;
+      n++;
+      var r=document.createElement('div');r.className='row';
+      var im=document.createElement('img');im.src=a[1];im.alt='';
+      var d=document.createElement('div');d.className='info';d.textContent=(a[2]||'')+' · '+a[0];
+      var b=document.createElement('button');b.className='del';b.textContent='Delete';
+      b.onclick=function(){removePhoto(a[1],b)};
+      r.appendChild(im);r.appendChild(d);r.appendChild(b);L.appendChild(r);
+    });
+    if(!n)L.textContent='No uploaded photos yet.';
+  }catch(e){L.textContent='';say(e.message||String(e),'err')}
+}
+async function removePhoto(path,btn){
+  if(!confirm('Delete this photo? This cannot be undone.'))return;
+  btn.disabled=true;
+  try{
+    say('Removing caption…');
+    var g=await api('photos.js');
+    if(!g.ok)await fail(g,'Reading photos.js');
+    var j=await g.json(),lines=dec(j.content).split('\n');
+    var keep=lines.filter(function(l){return !(l.trim().charAt(0)==='['&&l.indexOf(JSON.stringify(path))>-1)});
+    if(keep.length===lines.length)throw new Error('Could not find this photo in photos.js.');
+    var r=await api('photos.js',{method:'PUT',body:JSON.stringify({message:'Remove photo',content:enc(keep.join('\n')),sha:j.sha,branch:BR})});
+    if(!r.ok)await fail(r,'Saving photos.js');
+    say('Deleting file…');
+    var f=await api(path);
+    if(f.ok){
+      var fj=await f.json();
+      var d=await api(path,{method:'DELETE',body:JSON.stringify({message:'Delete photo',sha:fj.sha,branch:BR})});
+      if(!d.ok)await fail(d,'Deleting file');
+    }
+    say('Deleted. It will disappear from your site in 1–2 minutes.','ok');
+  }catch(e){say(e.message||String(e),'err')}
+  loadList();
 }
 
 $('go').onclick=async function(){
@@ -114,6 +180,7 @@ $('go').onclick=async function(){
     if(!r2.ok)await fail(r2,'Saving caption');
     say('Done! It will show on your site in 1–2 minutes.','ok');
     $('file').value='';$('cap').value='';$('prev').hidden=true;
+    loadList();
   }catch(e){say(e.message||String(e),'err')}
   $('go').disabled=false;
 };
